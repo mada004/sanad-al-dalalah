@@ -116,16 +116,11 @@ function InputSection({ onAnalyze, onEdit, analyzing, currentStep }) {
     <section className="hero">
       <div className="hero-grid">
         <div className="hero-intro">
-          <div className="eyebrow"><span className="eyebrow-node" /> مراجعة موثقة، وقرار إنساني</div>
+          <div className="eyebrow"><span className="eyebrow-node" /> مراجعة مدعومة بالدليل</div>
           <h1>راجع المحتوى التعريفي بالإسلام<br /><span>بدليل قابل للتتبع</span></h1>
           <p className="hero-copy">
             يساعد سند الدلالة المعرّفين بالإسلام على مراجعة المحتوى، وربط المعلومات الجوهرية بالمصادر المعتمدة، وبيان مدى دعم الأدلة لها، واقتراح التحسينات عند الحاجة.
           </p>
-          <div className="hero-principles" aria-label="مبادئ سند الدلالة">
-            <span><i /> مصادر معتمدة</span>
-            <span><i /> أدلة قابلة للتتبع</span>
-            <span><i /> قرار بشري</span>
-          </div>
         </div>
 
         <div className="evidence-visual" aria-label="مسار بصري من النص إلى الدليل والمصدر">
@@ -213,7 +208,7 @@ function FlowSteps({ currentStep }) {
   ))}</ol>;
 }
 
-const analysisSteps = ["تحديد المعلومات الجوهرية", "ربط النقاط بالأدلة والمصادر", "إعداد التقييم والتحسينات للمراجع"];
+const analysisSteps = ["تحديد المعلومات الجوهرية", "ربط المعلومات بالأدلة والمصادر", "إعداد التقييم والتحسينات للمراجع"];
 
 function AnalysisProgress({ text, stage, onCancel }) {
   const root = useRef(null);
@@ -248,7 +243,6 @@ function ResultsWorkspace({ claims, originalContent, onFinalChange }) {
     setFinalContent(null);
     onFinalChange(false);
   };
-  const reviewedCount = Object.keys(decisions).length;
 
   return (
     <section className="results-section" id="results">
@@ -256,7 +250,7 @@ function ResultsWorkspace({ claims, originalContent, onFinalChange }) {
         <div>
           <span className="section-kicker">مساحة عمل المراجع</span>
           <h2 ref={resultsHeading} tabIndex={-1}>نتيجة المراجعة</h2>
-          <p>تمت مراجعة {claims.length.toLocaleString("ar-SA")} نقاط جوهرية قابلة للتحقق، وليست كل كلمة أو جملة.</p>
+          <p>تم تحديد المعلومات الجوهرية القابلة للتحقق ومراجعتها وربطها بالأدلة المتاحة.</p>
         </div>
         <div className="summary-badge"><Icon name="check" size={18} /> اكتمل التحليل</div>
       </div>
@@ -267,7 +261,7 @@ function ResultsWorkspace({ claims, originalContent, onFinalChange }) {
           <div className="panel-title">
             <div>
               <span>المعلومات التي تمت مراجعتها</span>
-              <small>اختر نقطة لعرض دليلها ونتيجة المراجعة</small>
+              <small>اختر معلومة لعرض دليلها ونتيجة المراجعة</small>
             </div>
             <b>{claims.length.toLocaleString("ar-SA")}</b>
           </div>
@@ -281,7 +275,7 @@ function ResultsWorkspace({ claims, originalContent, onFinalChange }) {
                 aria-controls="claim-detail"
                 type="button"
               >
-                <span className="claim-number" aria-label={`النقطة ${index + 1}`}>{(index + 1).toLocaleString("ar-SA")}</span>
+                <span className="claim-number" aria-label={`المعلومة ${index + 1}`}>{(index + 1).toLocaleString("ar-SA")}</span>
                 <span className="claim-content">
                   <StatusBadge status={claim.status} />
                   <strong>{claim.claim}</strong>
@@ -293,14 +287,13 @@ function ResultsWorkspace({ claims, originalContent, onFinalChange }) {
           </div>
           <div className="claims-legend">
             <Icon name="info" size={17} />
-            <span>التقييم الآلي إرشادي. راجع الدليل وسجّل قرارك لكل نقطة.</span>
+            <span>التقييم الآلي إرشادي. راجع الدليل وسجّل قرارك لكل معلومة.</span>
           </div>
         </aside>
 
         <article ref={detail} className="evidence-panel" id="claim-detail" aria-labelledby="claim-heading">
           <div className="evidence-header">
             <div>
-              <span className="detail-label">النقطة {(selectedIndex + 1).toLocaleString("ar-SA")}</span>
               <h3 id="claim-heading">{selected.claim}</h3>
             </div>
             <div className="support-state">
@@ -337,7 +330,7 @@ function ResultsWorkspace({ claims, originalContent, onFinalChange }) {
           <div className={`reason-box assessment-${selected.status}`}>
             <div className="assessment-heading"><span className="detail-label">تقييم النظام</span><StatusBadge status={selected.status} /></div>
             <span className="detail-label"><Icon name="search" size={17} /> سبب التقييم</span>
-            <p>{selected.reason.replaceAll("الادعاء", "النقطة")}</p>
+            <p>{selected.reason.replaceAll("الادعاء", "المعلومة")}</p>
           </div>
 
           <div className="suggestion-box">
@@ -354,20 +347,20 @@ function ResultsWorkspace({ claims, originalContent, onFinalChange }) {
               <p>التقييم الآلي مساعد للمراجعة، والقرار النهائي لك.</p>
               <p role="status">{decision ? `قرارك: ${decisionLabels[decision]}` : "لم يُتخذ قرار بعد"}</p>
             </div>
-            <div className="decision-actions" role="group" aria-label="قرار المراجع للنقطة المحددة">
+            <div className="decision-actions" role="group" aria-label="قرار المراجع للمعلومة المحددة">
               {Object.entries(decisionLabels).map(([value, label]) => (
                 <button key={value} className={`decision-button decision-button--${value === "specialist" ? "specialist" : "review"}`} type="button" disabled={value === "improved" && !improvement} aria-pressed={decision === value} onClick={() => setDecision(value)}>{label}</button>
               ))}
             </div>
             <div className="review-navigation">
               <button className="review-text-button" disabled={!decision} type="button" onClick={() => { setDecisions((current) => { const next = { ...current }; delete next[selectedIndex]; return next; }); setFinalContent(null); onFinalChange(false); }}>التراجع عن القرار</button>
-              {selectedIndex < claims.length - 1 && <button className="review-text-button" type="button" onClick={() => selectPoint(selectedIndex + 1)}>النقطة التالية ←</button>}
+              {selectedIndex < claims.length - 1 && <button className="review-text-button" type="button" onClick={() => selectPoint(selectedIndex + 1)}>المعلومة التالية ←</button>}
             </div>
           </div>
         </article>
       </div>
       <div className="final-step-actions">
-        <p>{reviewedCount.toLocaleString("ar-SA")} من {claims.length.toLocaleString("ar-SA")} نقاط لها قرار. يمكنك إكمال المراجعة أو العودة إليها لاحقًا.</p>
+        <p>يمكنك إكمال مراجعة المعلومات واتخاذ القرار المناسب لكل منها.</p>
         <button className="primary-button" type="button" onClick={() => { setFinalContent(buildImprovedContent(originalContent, claims, decisions)); onFinalChange(true); }}>إنشاء النسخة المحسّنة</button>
       </div>
       {finalContent && <FinalReview key={JSON.stringify(finalContent)} originalContent={originalContent} content={finalContent} onBack={() => { onFinalChange(false); setFinalContent(null); document.getElementById("results")?.scrollIntoView({ block: "start" }); }} />}
@@ -446,7 +439,7 @@ export default function App() {
           setPendingText(value);
         }} />
         {pendingText !== null && <AnalysisProgress text={pendingText} stage={analysisStage} onCancel={() => setPendingText(null)} />}
-        <p className="sr-only" role="status">{claims.length > 0 ? `تمت مراجعة ${claims.length} نقاط. النتائج جاهزة للمراجعة.` : ""}</p>
+        <p className="sr-only" role="status">{claims.length > 0 ? `تمت مراجعة المعلومات. النتائج جاهزة للمراجعة.` : ""}</p>
         {claims.length > 0 && <ResultsWorkspace key={analysisVersion} claims={claims} originalContent={originalContent} onFinalChange={setShowFinal} />}
       </main>
       <footer id="about">
