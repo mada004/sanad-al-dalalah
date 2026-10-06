@@ -1,7 +1,10 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from sources import SOURCES
+
 from dorar import search_dorar
+from semantic_search import search_hadiths
+from ai_compare import compare_claim_with_evidence
+
 
 app = FastAPI()
 
@@ -28,34 +31,66 @@ def analyze(request: AnalyzeRequest):
 
     for claim in claims:
 
+        # البحث في HadeethEnc
+        hadeethenc_results = search_hadiths(
+            claim,
+            top_k=3
+        )
+
+        # البحث في Dorar
         dorar_results = search_dorar(claim)
 
-        if dorar_results:
+        # نجمع الأدلة
+        evidence_results = []
 
-            evidence_results = []
+        for result in hadeethenc_results:
+            evidence_results.append({
+                "evidence": result["evidence"],
+                "source_name": result["source_name"],
+                "source_location": result["source_location"]
+            })
 
-            for result in dorar_results:
-                evidence_results.append({
-                    "evidence": result["evidence"],
-                    "source_name": result["source_name"],
-                    "source_location": result["source_location"]
-                })
+        for result in dorar_results[:2]:
+            evidence_results.append({
+                "evidence": result["evidence"],
+                "source_name": result["source_name"],
+                "source_location": result["source_location"]
+            })
+
+        # إذا وجدنا أدلة، نرسل أفضل دليل للـAI للمقارنة
+                # إذا وجدنا أدلة، نرسل جميع الأدلة للـAI للمقارنة
+        if evidence_results:
+
+            ai_result = compare_claim_with_evidence(
+                claim,
+                evidence_results
+            )
+
+            best_evidence_index = ai_result.get("best_evidence")
+
+            if best_evidence_index is not None:
+                best_evidence = evidence_results[best_evidence_index - 1]
+            else:
+                best_evidence = None
 
             results.append({
                 "claim": claim,
-                "status": "needs_review",
-                "evidence": evidence_results,
-                "reason": "Multiple pieces of evidence were retrieved and require semantic comparison.",
-                "suggestion": ""
+                "status": ai_result.get("status", "needs_review"),
+                "evidence": [best_evidence] if best_evidence else [],
+                "reason": ai_result.get("reason", ""),
+                "suggestion": ai_result.get("suggestion", "")
             })
 
         else:
+
             results.append({
                 "claim": claim,
                 "status": "needs_review",
                 "evidence": [],
-                "reason": "No matching evidence was found in Dorar.net.",
+                "reason": "لم يتم العثور على دليل مناسب للمقارنة.",
                 "suggestion": ""
             })
 
-    return {"claims": results}
+    return {
+        "claims": results
+    }
