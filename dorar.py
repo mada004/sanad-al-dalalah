@@ -3,16 +3,23 @@ from bs4 import BeautifulSoup
 
 
 def search_dorar(query):
-    response = requests.get(
-        "https://dorar.net/dorar_api.json",
-        params={"skey": query},
-        timeout=10
-    )
+    try:
+        response = requests.get(
+            "https://dorar.net/dorar_api.json",
+            params={"skey": query},
+            headers={"User-Agent": "Sanad-Al-Dalalah/1.0"},
+            timeout=10
+        )
 
-    response.raise_for_status()
+        response.raise_for_status()
 
-    data = response.json()
-    html = data["ahadith"]["result"]
+        data = response.json()
+        html = data["ahadith"]["result"]
+        if not isinstance(html, str):
+            return []
+    except (requests.RequestException, ValueError, KeyError, TypeError):
+        # Dorar is optional: let analysis continue with other retrieved evidence.
+        return []
 
     soup = BeautifulSoup(html, "html.parser")
 
