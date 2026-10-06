@@ -223,6 +223,27 @@ function AnalysisProgress({ text, stage, onCancel }) {
   </section>;
 }
 
+function AdditionalEvidence({ evidence }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!evidence?.length) return null;
+  return <div className="additional-evidence">
+    <button className="secondary-button" type="button" aria-expanded={expanded} aria-controls="additional-evidence-list" onClick={() => setExpanded((value) => !value)}>
+      {expanded ? "إخفاء الأدلة الإضافية" : "عرض أدلة إضافية"}
+    </button>
+    {expanded && <div className="additional-evidence-list" id="additional-evidence-list">
+      <p className="final-help">أدلة مسترجعة للمراجعة؛ التقييم مبني على الدليل الأساسي.</p>
+      {evidence.map((item, index) => {
+        const sourceName = item.source_name.trim();
+        const displayName = sourceName === "HadeethEnc" ? "موسوعة الأحاديث النبوية – HadeethEnc" : sourceName === "Dorar.net" ? "الدرر السنية" : sourceName;
+        return <div className="additional-evidence-card" key={index}>
+          <blockquote>{item.evidence}</blockquote>
+          <div className="citation-copy"><strong>{displayName}</strong></div>
+        </div>;
+      })}
+    </div>}
+  </div>;
+}
+
 function ResultsWorkspace({ claims, originalContent, onFinalChange }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [decisions, setDecisions] = useState({});
@@ -325,9 +346,10 @@ function ResultsWorkspace({ claims, originalContent, onFinalChange }) {
             <div className="citation-copy">
               <span>المصدر</span>
               <strong>{selected.source_name === "Dorar.net" ? "الدرر السنية" : displayedSourceName.replace(/\s*\(مصدر تجريبي\)/g, "")}</strong>
-              <small><b>موضع المصدر:</b> {selected.source_location}</small>
             </div>
           </div>
+
+          <AdditionalEvidence key={selectedIndex} evidence={selected.additional_evidence} />
 
           <div className={`reason-box assessment-${selected.status}`}>
             <div className="assessment-heading"><span className="detail-label">تقييم النظام</span><StatusBadge status={selected.status} /></div>
@@ -418,6 +440,7 @@ export default function App() {
   const [analysisStage, setAnalysisStage] = useState(0);
   const [showFinal, setShowFinal] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
+  const [analysisComplete, setAnalysisComplete] = useState(false);
   useEffect(() => {
     if (pendingText === null) return;
     const controller = new AbortController();
@@ -451,6 +474,9 @@ export default function App() {
             evidence: evidenceText("evidence"),
             source_name: evidenceText("source_name"),
             source_location: evidenceText("source_location"),
+            additional_evidence: Array.isArray(claim.additional_evidence)
+              ? claim.additional_evidence.filter((entry) => entry && typeof entry.evidence === "string" && entry.evidence.trim()
+                && typeof entry.source_name === "string" && typeof entry.source_location === "string") : [],
             reason: typeof claim.reason === "string" ? claim.reason : "",
             suggestion: typeof claim.suggestion === "string" ? claim.suggestion : "",
           };
@@ -458,6 +484,7 @@ export default function App() {
         if (!active) return;
         setOriginalContent(pendingText);
         setClaims(adaptedClaims);
+        setAnalysisComplete(true);
         setAnalysisVersion((version) => version + 1);
       } catch (error) {
         if (active && error.name !== "AbortError") {
@@ -481,7 +508,8 @@ export default function App() {
       <div className="page-glow page-glow--one" />
       <div className="page-glow page-glow--two" />
       <main className="container" id="main-content">
-        <InputSection analyzing={pendingText !== null} currentStep={showFinal ? 3 : claims.length ? 2 : pendingText !== null ? 1 : 0} onEdit={() => { setAnalysisError(""); setClaims([]); setPendingText(null); setShowFinal(false); }} onAnalyze={(value) => {
+        <InputSection analyzing={pendingText !== null} currentStep={showFinal ? 3 : claims.length ? 2 : pendingText !== null ? 1 : 0} onEdit={() => { setAnalysisComplete(false); setAnalysisError(""); setClaims([]); setPendingText(null); setShowFinal(false); }} onAnalyze={(value) => {
+          setAnalysisComplete(false);
           setAnalysisError("");
           setClaims([]);
           setShowFinal(false);
@@ -489,6 +517,7 @@ export default function App() {
           setPendingText(value);
         }} />
         {analysisError && <p className="final-help" role="alert">{analysisError}</p>}
+        {analysisComplete && pendingText === null && claims.length === 0 && <p className="final-help" role="status">لم يتم العثور على معلومات تحتاج إلى مراجعة بالمصادر في هذا النص.</p>}
         {pendingText !== null && <AnalysisProgress text={pendingText} stage={analysisStage} onCancel={() => setPendingText(null)} />}
         <p className="sr-only" role="status">{claims.length > 0 ? `تمت مراجعة المعلومات. النتائج جاهزة للمراجعة.` : ""}</p>
         {claims.length > 0 && <ResultsWorkspace key={analysisVersion} claims={claims} originalContent={originalContent} onFinalChange={setShowFinal} />}

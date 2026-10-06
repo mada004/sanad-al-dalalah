@@ -1,53 +1,72 @@
-import json
 import re
-
-import requests
+import unicodedata
+import json
 
 from ai_compare import ask_ai
 
 
-def extract_claims(text):
-    # Accept the input; a lack of review items is not a submission error.
-    if len(re.findall(r"[^\W\d_]+", text, re.UNICODE)) < 2:
-        return []
+def _has_content(text):
+    # Ignore only obvious artifacts, not short sentences or unverifiable ideas.
+    normalized = unicodedata.normalize("NFKC", text)
+    normalized = re.sub(r"[\u0640\u064B-\u065F\u0670]", "", normalized)
+    words = re.findall(r"[^\W\d_]+", normalized, re.UNICODE)
+    return any(len(word) > 1 for word in words)
 
-    prompt = (
-        'Find the declarative factual statements INSIDE this Arabic conversation or content. '
-        'Copy only the complete assertions verbatim. Omit greetings, transitions, headings, '
-        'personal opinions, incomplete fragments and questions from the selected substrings. '
-        'Do not split coherent assertions at commas or decide whether assertions are true. '
-        'Output {"claims": ["exact original assertion"]}, or {"claims": []} if none. '
-        'Arabic content:\n' + text
+
+def _candidate_statements(text):
+    """Segment content without splitting commas, decimals or wrapped lines."""
+    statements = []
+    start = 0
+    # Commas, conjunctions, decimals and single wrapped lines stay intact.
+    boundaries = re.finditer(
+        r"[!?؟]+(?=\s|$)|(?<!\d)\.(?!\d)(?=\s|$)|\n[ \t]*\n", text,
     )
+    for boundary in boundaries:
+        if boundary.group() == ".":
+            word = re.search(r"([^\W\d_]+)$", text[:boundary.start()], re.UNICODE)
+            if word and len(word.group()) == 1:
+                continue
+        statement = text[start:boundary.end()].strip()
+        if _has_content(statement):
+            statements.append(statement)
+        start = boundary.end()
+    remainder = text[start:].strip()
+    if _has_content(remainder):
+        statements.append(remainder)
+    return statements
 
-    try:
-        response = ask_ai(prompt).strip()
-        if response.startswith("```"):
-            response = re.sub(r"^```(?:json)?\s*|\s*```$", "", response)
-        data = json.loads(response)
-        if not isinstance(data, dict) or not isinstance(data.get("claims"), list):
-            return []
-    except (requests.RequestException, ValueError, TypeError):
-        # Do not invent claims when semantic extraction is unavailable.
+
+def extract_claims(text):
+    """Select literal informational assertions, without judging their evidence."""
+    candidates = _candidate_statements(text)
+    if not candidates:
         return []
-
+    prompt = (
+        'Remove only non-assertive parts (greetings, pure questions, headings, '
+        'subjective preferences, fragments) from this Arabic content. Keep all '
+        'informational assertions, even short informal nominal statements or '
+        'false statements. Do not assess truth or evidence availability. '
+        'Copy retained assertions exactly. Return JSON {"claims": ["retained text"]}. '
+        'If the content asserts a fact, keep it. Arabic content:\n' + text
+    )
+    raw = ask_ai(prompt)
+    raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
+    # Local models sometimes surround the JSON object with explanatory text.
+    object_start = raw.find("{")
+    if object_start < 0:
+        raise ValueError("Invalid claim extraction response")
+    data, _ = json.JSONDecoder().raw_decode(raw[object_start:])
+    if not isinstance(data, dict) or not isinstance(data.get("claims"), list):
+        raise ValueError("Invalid claim extraction response")
     claims = []
+    positions = set()
     for claim in data["claims"]:
-        if not isinstance(claim, str):
+        if not isinstance(claim, str) or not _has_content(claim):
             continue
         claim = claim.strip()
-        start = text.find(claim)
-        if start < 0 or len(re.findall(r"[^\W\d_]+", claim, re.UNICODE)) < 2:
-            continue
-        if claim.endswith(("?", "؟")):
-            continue
-        # A statement can occur inside conversational wording. Require whole
-        # words, not sentence punctuation; semantic completeness is model-led.
-        end = start + len(claim)
-        if start and re.match(r"\w", text[start - 1]) and re.match(r"\w", claim[0]):
-            continue
-        if end < len(text) and re.match(r"\w", text[end]) and re.match(r"\w", claim[-1]):
-            continue
-        if claim not in claims:
-            claims.append(claim)
-    return sorted(claims, key=text.find)
+        # The model may select a substring, but cannot rewrite or invent content.
+        match = re.search(r"(?<!\w)" + re.escape(claim) + r"(?!\w)", text)
+        if match and match.start() not in positions:
+            positions.add(match.start())
+            claims.append((match.start(), claim))
+    return [claim for _, claim in sorted(claims)]

@@ -89,6 +89,7 @@ class EvidenceSelectionTests(unittest.TestCase):
         self.assertEqual(result, {"claims": [{
             "claim": CLAIM, "status": "supported", "evidence": [strong],
             "reason": "same meaning", "suggestion": "",
+            "additional_evidence": [weak],
         }]})
 
 

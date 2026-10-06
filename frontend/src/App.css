@@ -1718,3 +1718,11 @@ button.primary-button { color: #063831; }
 @media (max-width: 620px) {
   .editor-shell .journey { margin-inline: 16px; }
 }
+.additional-evidence { margin: 18px 0; }
+.additional-evidence > .secondary-button { min-height: 40px; height: auto; margin: 0; padding: 8px 12px; font-size: 13px; }
+.additional-evidence-list { display: grid; gap: 12px; margin-top: 12px; }
+.additional-evidence-list > .final-help { margin: 0; }
+.additional-evidence-card { padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.additional-evidence-card blockquote { margin: 0 0 12px; font-size: 15px; line-height: 2.1; }
+.additional-evidence-card .citation-copy { display: grid; gap: 6px; }
+.additional-evidence-card .citation-copy small { font-size: 13px; }

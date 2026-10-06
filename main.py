@@ -8,8 +8,8 @@ from pydantic import BaseModel
 from dorar import search_dorar
 from central_db import search_central_db
 from claim_extraction import extract_claims
-from semantic_search import search_hadiths
-from ai_compare import compare_claim_with_evidence
+from semantic_search import search_hadiths, normalize_arabic
+from ai_compare import compare_claim_with_evidence, basic_relation_check
 
 
 app = FastAPI()
@@ -112,13 +112,24 @@ def analyze(request: AnalyzeRequest):
             else:
                 best_evidence = None
 
-            results.append({
+            result = {
                 "claim": claim,
                 "status": ai_result.get("status", "needs_review"),
                 "evidence": [best_evidence] if best_evidence else [],
                 "reason": ai_result.get("reason", ""),
                 "suggestion": ai_result.get("suggestion", "")
-            })
+            }
+            if best_evidence:
+                seen = {normalize_arabic(best_evidence["evidence"])}
+                additional = []
+                for candidate in evidence_results:
+                    text_key = normalize_arabic(candidate["evidence"])
+                    if text_key and text_key not in seen and basic_relation_check(claim, candidate["evidence"]):
+                        additional.append(candidate)
+                        seen.add(text_key)
+                if additional:
+                    result["additional_evidence"] = additional
+            results.append(result)
 
         else:
 

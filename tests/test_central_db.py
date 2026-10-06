@@ -107,6 +107,7 @@ class AnalyzeIntegrationTests(unittest.TestCase):
         self.assertEqual(result, {"claims": [{
             "claim": "claim", "status": "supported", "evidence": evidence[2:],
             "reason": "reason", "suggestion": "",
+            "additional_evidence": evidence[:2],
         }]})
 
     def test_optional_sources_fail_without_breaking_hadeethenc(self):
