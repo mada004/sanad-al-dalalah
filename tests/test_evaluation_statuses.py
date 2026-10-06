@@ -26,9 +26,9 @@ class EvaluationStatusTests(unittest.TestCase):
         # These are transport/validation fixtures, not prescribed AI judgments.
         for status in STATUSES:
             with self.subTest(status=status):
-                result = self.compare(json.dumps({"status": status, "reason": "model reason", "suggestion": ""}))
+                result = self.compare(json.dumps({"status": status, "reason": "تقييم مبني على النصين", "suggestion": ""}))
                 self.assertEqual(result["status"], status)
-                self.assertEqual(result["reason"], "model reason")
+                self.assertEqual(result["reason"], "تقييم مبني على النصين")
                 self.assertEqual(result["best_evidence"], 1)
 
     def test_each_status_survives_analyze_contract(self):
@@ -39,7 +39,7 @@ class EvaluationStatusTests(unittest.TestCase):
                  patch("main.search_hadiths", return_value=[evidence]), \
                  patch("main.search_dorar", return_value=[]), patch("main.search_central_db", return_value=[]), \
                  patch("ai_compare.ask_ai", side_effect=["YES|1", json.dumps({
-                     "status": status, "reason": "model reason", "suggestion": "",
+                     "status": status, "reason": "تقييم مبني على النصين", "suggestion": "",
                  }), json.dumps({"grounded": True, "claim_quote": claim, "evidence_quote": evidence["evidence"]})]), \
                  patch("ai_compare._propose_revision", return_value=""), contextlib.redirect_stdout(io.StringIO()):
                 result = main.analyze(main.AnalyzeRequest(text=claim))
@@ -47,7 +47,7 @@ class EvaluationStatusTests(unittest.TestCase):
                 self.assertEqual(result["claims"][0]["evidence"], [evidence])
 
     def test_unknown_status_fails_conservatively(self):
-        result = self.compare('{"status": "unknown", "reason": "reason", "suggestion": ""}')
+        result = self.compare(json.dumps({"status": "unknown", "reason": "سبب التقييم", "suggestion": ""}))
         self.assertEqual(result["status"], "needs_review")
 
     def test_invalid_json_fails_conservatively(self):

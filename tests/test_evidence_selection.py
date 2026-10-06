@@ -56,7 +56,7 @@ class EvidenceSelectionTests(unittest.TestCase):
     def test_ai_can_still_choose_a_lower_ranked_evidence(self):
         candidates = [evidence(WEAK, "HadeethEnc"), evidence(STRONG, central_db.SOURCE_NAME)]
         with patch("ai_compare.ask_ai", side_effect=[
-            "YES|1", json.dumps({"status": "needs_review", "reason": "weak evidence", "suggestion": ""}),
+            "YES|1", json.dumps({"status": "needs_review", "reason": "دليل غير كاف", "suggestion": ""}),
         ]), patch("ai_compare._reason_is_grounded", return_value=True), contextlib.redirect_stdout(io.StringIO()):
             result = ai_compare.compare_claim_with_evidence(CLAIM, candidates)
         self.assertEqual(result["best_evidence"], 1)
@@ -78,7 +78,7 @@ class EvidenceSelectionTests(unittest.TestCase):
                 return f"YES|{index}"
             self.assertIn(STRONG, prompt)
             self.assertNotIn(WEAK, prompt)
-            return json.dumps({"status": "supported", "reason": "same meaning", "suggestion": ""})
+            return json.dumps({"status": "supported", "reason": "المعنى متطابق", "suggestion": ""})
 
         with patch("main.extract_claims", return_value=[CLAIM]), \
              patch("main.search_hadiths", return_value=[weak]), \
@@ -89,7 +89,7 @@ class EvidenceSelectionTests(unittest.TestCase):
             result = main.analyze(main.AnalyzeRequest(text=CLAIM))
         self.assertEqual(result, {"claims": [{
             "claim": CLAIM, "status": "supported", "evidence": [strong],
-            "reason": "same meaning", "suggestion": "",
+            "reason": "المعنى متطابق", "suggestion": "",
             "additional_evidence": [weak],
         }]})
 
