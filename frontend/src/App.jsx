@@ -235,6 +235,9 @@ function ResultsWorkspace({ claims, originalContent, onFinalChange }) {
     if (window.matchMedia("(max-width: 820px)").matches) detail.current?.scrollIntoView({ block: "start" });
   };
   const selected = claims[selectedIndex];
+  const displayedSourceName = selected.source_name.split("\n").map((name) => (
+    name.trim() === "HadeethEnc" ? name.replace("HadeethEnc", "موسوعة الأحاديث النبوية – HadeethEnc") : name
+  )).join("\n");
   const improvement = getImprovement(selected);
   const decision = decisions[selectedIndex];
   const setDecision = (value) => {
@@ -321,7 +324,7 @@ function ResultsWorkspace({ claims, originalContent, onFinalChange }) {
             <div className="citation-icon"><Icon name="book" size={22} /></div>
             <div className="citation-copy">
               <span>المصدر</span>
-              <strong>{selected.source_name === "Dorar.net" ? "الدرر السنية" : selected.source_name === "HadeethEnc" ? "موسوعة الأحاديث النبوية – HadeethEnc" : selected.source_name.replace(/\s*\(مصدر تجريبي\)/g, "")}</strong>
+              <strong>{selected.source_name === "Dorar.net" ? "الدرر السنية" : displayedSourceName.replace(/\s*\(مصدر تجريبي\)/g, "")}</strong>
               <small><b>موضع المصدر:</b> {selected.source_location}</small>
             </div>
           </div>
