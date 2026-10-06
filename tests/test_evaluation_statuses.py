@@ -13,7 +13,10 @@ STATUSES = ("supported", "partially_supported", "needs_context", "needs_review")
 
 class EvaluationStatusTests(unittest.TestCase):
     def compare(self, response, claim="الصدق محمود", evidence="الصدق محمود في هذا السياق"):
-        with patch("ai_compare.ask_ai", side_effect=["YES|1", response]), \
+        with patch("ai_compare.ask_ai", side_effect=["YES|1", response, json.dumps({
+            "grounded": True, "claim_quote": claim, "evidence_quote": evidence,
+        })]), \
+             patch("ai_compare._propose_revision", return_value=""), \
              contextlib.redirect_stdout(io.StringIO()):
             return ai_compare.compare_claim_with_evidence(claim, [{
                 "evidence": evidence, "source_name": "reference", "source_location": "location",
@@ -37,7 +40,8 @@ class EvaluationStatusTests(unittest.TestCase):
                  patch("main.search_dorar", return_value=[]), patch("main.search_central_db", return_value=[]), \
                  patch("ai_compare.ask_ai", side_effect=["YES|1", json.dumps({
                      "status": status, "reason": "model reason", "suggestion": "",
-                 })]), contextlib.redirect_stdout(io.StringIO()):
+                 }), json.dumps({"grounded": True, "claim_quote": claim, "evidence_quote": evidence["evidence"]})]), \
+                 patch("ai_compare._propose_revision", return_value=""), contextlib.redirect_stdout(io.StringIO()):
                 result = main.analyze(main.AnalyzeRequest(text=claim))
                 self.assertEqual(result["claims"][0]["status"], status)
                 self.assertEqual(result["claims"][0]["evidence"], [evidence])
@@ -54,7 +58,7 @@ class EvaluationStatusTests(unittest.TestCase):
         with patch("ai_compare.ask_ai", return_value="NO") as model, \
              contextlib.redirect_stdout(io.StringIO()):
             result = ai_compare.compare_claim_with_evidence("الصدق محمود", [{
-                "evidence": "الصدق محمود", "source_name": "reference", "source_location": "location",
+                "evidence": "عدد الشهور اثنا عشر", "source_name": "reference", "source_location": "location",
             }])
         model.assert_called_once()
         self.assertEqual(result["status"], "needs_review")

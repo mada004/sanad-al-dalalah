@@ -57,7 +57,7 @@ class EvidenceSelectionTests(unittest.TestCase):
         candidates = [evidence(WEAK, "HadeethEnc"), evidence(STRONG, central_db.SOURCE_NAME)]
         with patch("ai_compare.ask_ai", side_effect=[
             "YES|1", json.dumps({"status": "needs_review", "reason": "weak evidence", "suggestion": ""}),
-        ]), contextlib.redirect_stdout(io.StringIO()):
+        ]), patch("ai_compare._reason_is_grounded", return_value=True), contextlib.redirect_stdout(io.StringIO()):
             result = ai_compare.compare_claim_with_evidence(CLAIM, candidates)
         self.assertEqual(result["best_evidence"], 1)
         self.assertEqual(result["status"], "needs_review")
@@ -84,7 +84,8 @@ class EvidenceSelectionTests(unittest.TestCase):
              patch("main.search_hadiths", return_value=[weak]), \
              patch("main.search_dorar", return_value=[]), \
              patch("main.search_central_db", return_value=[strong]), \
-             patch("ai_compare.ask_ai", side_effect=model), contextlib.redirect_stdout(io.StringIO()):
+             patch("ai_compare.ask_ai", side_effect=model), \
+             patch("ai_compare._reason_is_grounded", return_value=True), contextlib.redirect_stdout(io.StringIO()):
             result = main.analyze(main.AnalyzeRequest(text=CLAIM))
         self.assertEqual(result, {"claims": [{
             "claim": CLAIM, "status": "supported", "evidence": [strong],

@@ -21,6 +21,7 @@ class FactualCorrectionTests(unittest.TestCase):
         responses = ["YES|1", json.dumps({
             "status": "needs_review", "reason": reason, "suggestion": suggestion,
         }, ensure_ascii=False)]
+        responses.append(json.dumps({"grounded": True, "claim_quote": claim, "evidence_quote": evidence}))
         if suggestion:
             responses.append(validation if validation is not None else json.dumps({
                 "grounded": True, "evidence_quote": "بني الإسلام على خمس",
@@ -34,10 +35,10 @@ class FactualCorrectionTests(unittest.TestCase):
     def test_specific_mismatch_and_grounded_correction_retained(self):
         result, model = self.compare()
         self.assertEqual(result, {"best_evidence": 1, "status": "needs_review", "reason": REASON, "suggestion": SUGGESTION})
-        self.assertEqual(model.call_count, 3)
-        self.assertIn("يناقض", model.call_args_list[0].args[0])
+        self.assertEqual(model.call_count, 4)
+        self.assertIn("contradicts", model.call_args_list[0].args[0])
         self.assertIn("التعارض المحدد", model.call_args_list[1].args[0])
-        self.assertIn(EVIDENCE, model.call_args_list[2].args[0])
+        self.assertIn(EVIDENCE, model.call_args_list[3].args[0])
 
     def test_correction_is_general_not_tied_to_example_or_number(self):
         evidence = "إن عدة الشهور عند الله اثنا عشر شهرا."
@@ -70,7 +71,7 @@ class FactualCorrectionTests(unittest.TestCase):
     def test_no_suggestion_adds_no_validation_call(self):
         result, model = self.compare(suggestion="")
         self.assertEqual(result["suggestion"], "")
-        self.assertEqual(model.call_count, 2)
+        self.assertEqual(model.call_count, 3)
 
     def test_no_relevant_evidence_does_not_invent_a_correction(self):
         with patch("ai_compare.ask_ai", return_value="NO"), contextlib.redirect_stdout(io.StringIO()):
