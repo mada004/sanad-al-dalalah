@@ -1,16 +1,22 @@
 import json
+import os
 import re
 import requests
 
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "qwen2.5:3b"
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+OLLAMA_URL = f"{OLLAMA_BASE_URL}/api/generate"
+MODEL_NAME = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
 
 
 def ask_ai(prompt):
 
+    api_key = os.getenv("OLLAMA_API_KEY")
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+
     response = requests.post(
         OLLAMA_URL,
+        headers=headers,
         json={
             "model": MODEL_NAME,
             "prompt": prompt,
@@ -129,9 +135,11 @@ def prioritize_evidence(claim, evidence_results):
 
 def basic_relation_check(claim, evidence):
 
-    claim_normalized = claim.strip()
+    # Ignore Arabic vocalization and elongation when checking literal overlap.
+    # Keep the existing conservative word-overlap rule on both normalized texts.
+    claim_normalized = re.sub(r"[\u0640\u064B-\u065F\u0670]", "", claim).strip()
 
-    evidence_normalized = evidence.strip()
+    evidence_normalized = re.sub(r"[\u0640\u064B-\u065F\u0670]", "", evidence).strip()
 
     if not claim_normalized or not evidence_normalized:
         return False

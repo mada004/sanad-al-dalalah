@@ -1,3 +1,6 @@
+import os
+from urllib.parse import urlsplit
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -9,12 +12,35 @@ from ai_compare import compare_claim_with_evidence
 
 app = FastAPI()
 
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+    "https://quiet-sprinkles-4f25c6.netlify.app",
+]
+for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(","):
+    origin = origin.strip()
+    if not origin:
+        continue
+    parsed = urlsplit(origin)
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path
+        or parsed.query
+        or parsed.fragment
+        or "*" in origin
+    ):
+        raise ValueError("CORS_ALLOWED_ORIGINS must contain explicit HTTP(S) origins without paths")
+    if origin not in allowed_origins:
+        allowed_origins.append(origin)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173"
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
