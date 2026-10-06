@@ -1707,3 +1707,14 @@ button.primary-button { color: #063831; }
   .app-header .brand strong { font-size: 18px; }
   .app-header .brand small { font-size: 10px; }
 }
+
+@media (min-width: 1101px) {
+  .hero-intro { container-type: inline-size; }
+  .hero h1 { font-size: min(clamp(38px, 4.2vw, 60px), 8cqi); white-space: nowrap; }
+}
+
+.editor-shell .journey { margin: 16px 24px 0; }
+
+@media (max-width: 620px) {
+  .editor-shell .journey { margin-inline: 16px; }
+}

@@ -171,6 +171,7 @@ function InputSection({ onAnalyze, onEdit, analyzing, currentStep }) {
             )}
           </div>
         </div>
+        <FlowSteps currentStep={currentStep} />
         <p id="editor-description" className="editor-description">أدخل المحتوى التعريفي بالإسلام لمراجعته وربط معلوماته بالمصادر المعتمدة.</p>
         <label className="content-label" htmlFor="content">المحتوى الأصلي</label>
         <textarea
@@ -193,7 +194,6 @@ function InputSection({ onAnalyze, onEdit, analyzing, currentStep }) {
         </div>
       </form>
 
-      <FlowSteps currentStep={currentStep} />
     </section>
   );
 }
