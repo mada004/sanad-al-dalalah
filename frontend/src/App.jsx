@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import mockData from "./mockData";
 import { getImprovement, buildImprovedContent } from "./reviewContent";
 import "./App.css";
 import bathelLogo from "./assets/bathel.png";
@@ -322,7 +321,7 @@ function ResultsWorkspace({ claims, originalContent, onFinalChange }) {
             <div className="citation-icon"><Icon name="book" size={22} /></div>
             <div className="citation-copy">
               <span>المصدر</span>
-              <strong>{selected.source_name.replace(/\s*\(مصدر تجريبي\)/g, "")}</strong>
+              <strong>{selected.source_name === "Dorar.net" ? "الدرر السنية" : selected.source_name.replace(/\s*\(مصدر تجريبي\)/g, "")}</strong>
               <small><b>موضع المصدر:</b> {selected.source_location}</small>
             </div>
           </div>
@@ -336,7 +335,11 @@ function ResultsWorkspace({ claims, originalContent, onFinalChange }) {
           <div className="suggestion-box">
             <div>
               <span className="detail-label"><Icon name="sparkle" size={17} /> التحسين المقترح</span>
-              <p>{improvement || "لا يحتاج إلى تعديل"}</p>
+              <p>{improvement || (selected.status === "supported"
+                ? "لا يحتاج إلى تعديل"
+                : selected.status === "needs_review"
+                  ? "لم يُقترح تعديل تلقائي. راجع المعلومة والدليل قبل اتخاذ القرار."
+                  : "لم يُقترح تعديل تلقائي لهذه المعلومة.")}</p>
             </div>
             {improvement && <button className="secondary-button" type="button" aria-pressed={decision === "improved"} onClick={() => setDecision("improved")}>{decision === "improved" ? "تم اعتماد التحسين" : "اعتماد التحسين"}</button>}
           </div>
@@ -411,20 +414,62 @@ export default function App() {
   const [pendingText, setPendingText] = useState(null);
   const [analysisStage, setAnalysisStage] = useState(0);
   const [showFinal, setShowFinal] = useState(false);
-  // Timed prototype presentation only: results still come from local mockData.
+  const [analysisError, setAnalysisError] = useState("");
   useEffect(() => {
     if (pendingText === null) return;
-    const timer = window.setTimeout(() => {
-      if (analysisStage < analysisSteps.length - 1) setAnalysisStage((stage) => stage + 1);
-      else {
+    const controller = new AbortController();
+    let active = true;
+
+    async function analyze() {
+      try {
+        setAnalysisStage(1);
+        const response = await fetch("http://127.0.0.1:8002/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: pendingText }),
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error(`Analysis failed: HTTP ${response.status}`);
+        setAnalysisStage(2);
+        const data = await response.json();
+        if (!Array.isArray(data?.claims)) throw new Error("Invalid analysis response");
+        const adaptedClaims = data.claims.map((claim) => {
+          if (!claim || typeof claim.claim !== "string") {
+            throw new Error("Invalid claim in analysis response");
+          }
+          const evidence = Array.isArray(claim.evidence) ? claim.evidence : [];
+          const evidenceText = (field) => evidence
+            .map((entry) => typeof entry?.[field] === "string" ? entry[field] : "")
+            .join("\n\n");
+          return {
+            ...claim,
+            status: Object.hasOwn(statusData, claim.status) ? claim.status : "needs_review",
+            evidence: evidenceText("evidence"),
+            source_name: evidenceText("source_name"),
+            source_location: evidenceText("source_location"),
+            reason: typeof claim.reason === "string" ? claim.reason : "",
+            suggestion: typeof claim.suggestion === "string" ? claim.suggestion : "",
+          };
+        });
+        if (!active) return;
         setOriginalContent(pendingText);
-        setClaims(mockData.claims);
+        setClaims(adaptedClaims);
         setAnalysisVersion((version) => version + 1);
-        setPendingText(null);
+      } catch (error) {
+        if (active && error.name !== "AbortError") {
+          setAnalysisError("تعذّر تحليل المحتوى. يرجى المحاولة مرة أخرى.");
+        }
+      } finally {
+        if (active) setPendingText(null);
       }
-    }, 550);
-    return () => window.clearTimeout(timer);
-  }, [pendingText, analysisStage]);
+    }
+
+    analyze();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [pendingText]);
 
   return (
     <div className="app" dir="rtl">
@@ -432,12 +477,14 @@ export default function App() {
       <div className="page-glow page-glow--one" />
       <div className="page-glow page-glow--two" />
       <main className="container" id="main-content">
-        <InputSection analyzing={pendingText !== null} currentStep={showFinal ? 3 : claims.length ? 2 : pendingText !== null ? 1 : 0} onEdit={() => { setClaims([]); setPendingText(null); setShowFinal(false); }} onAnalyze={(value) => {
+        <InputSection analyzing={pendingText !== null} currentStep={showFinal ? 3 : claims.length ? 2 : pendingText !== null ? 1 : 0} onEdit={() => { setAnalysisError(""); setClaims([]); setPendingText(null); setShowFinal(false); }} onAnalyze={(value) => {
+          setAnalysisError("");
           setClaims([]);
           setShowFinal(false);
           setAnalysisStage(0);
           setPendingText(value);
         }} />
+        {analysisError && <p className="final-help" role="alert">{analysisError}</p>}
         {pendingText !== null && <AnalysisProgress text={pendingText} stage={analysisStage} onCancel={() => setPendingText(null)} />}
         <p className="sr-only" role="status">{claims.length > 0 ? `تمت مراجعة المعلومات. النتائج جاهزة للمراجعة.` : ""}</p>
         {claims.length > 0 && <ResultsWorkspace key={analysisVersion} claims={claims} originalContent={originalContent} onFinalChange={setShowFinal} />}
