@@ -22,7 +22,15 @@ def encoded(value):
 
 
 def reason_validation(claim=CLAIM, evidence=EVIDENCE):
-    return encoded({"grounded": True, "claim_quote": claim, "evidence_quote": evidence})
+    validation = {"grounded": True, "claim_quote": claim, "evidence_quote": evidence}
+    if claim == CLAIM:
+        validation["partial_support"] = {
+            "independent_assertions": True, "supported_assertion_entailed": True,
+            "other_assertion_unsupported": True,
+            "supported_component": "الصدق من الأخلاق المهمة في الإسلام",
+            "unsupported_component": "هو وحده كافٍ لدخول الجنة",
+        }
+    return encoded(validation)
 
 
 def revision_validation(evidence=EVIDENCE):

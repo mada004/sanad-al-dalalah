@@ -11,10 +11,18 @@ import main
 STATUSES = ("supported", "partially_supported", "needs_context", "needs_review")
 
 
+def partial_proof():
+    # Transport fixtures explicitly supply two current-item assertion anchors.
+    return {"independent_assertions": True, "supported_assertion_entailed": True,
+            "other_assertion_unsupported": True, "supported_component": "الصدق محمود",
+            "unsupported_component": "الدخول مجاني"}
+
+
 class EvaluationStatusTests(unittest.TestCase):
-    def compare(self, response, claim="الصدق محمود", evidence="الصدق محمود في هذا السياق"):
+    def compare(self, response, claim="الصدق محمود، والدخول مجاني", evidence="الصدق محمود في هذا السياق"):
         with patch("ai_compare.ask_ai", side_effect=["YES|1", response, json.dumps({
             "grounded": True, "claim_quote": claim, "evidence_quote": evidence,
+            "partial_support": partial_proof(),
         })]), \
              patch("ai_compare._propose_revision", return_value=""), \
              contextlib.redirect_stdout(io.StringIO()):
@@ -32,7 +40,7 @@ class EvaluationStatusTests(unittest.TestCase):
                 self.assertEqual(result["best_evidence"], 1)
 
     def test_each_status_survives_analyze_contract(self):
-        claim = "الصدق محمود"
+        claim = "الصدق محمود، والدخول مجاني"
         evidence = {"evidence": "الصدق محمود", "source_name": "reference", "source_location": "location"}
         for status in STATUSES:
             with self.subTest(status=status), patch("main.extract_claims", return_value=[claim]), \
@@ -40,7 +48,7 @@ class EvaluationStatusTests(unittest.TestCase):
                  patch("main.search_dorar", return_value=[]), patch("main.search_central_db", return_value=[]), \
                  patch("ai_compare.ask_ai", side_effect=["YES|1", json.dumps({
                      "status": status, "reason": "تقييم مبني على النصين", "suggestion": "",
-                 }), json.dumps({"grounded": True, "claim_quote": claim, "evidence_quote": evidence["evidence"]})]), \
+                 }), json.dumps({"grounded": True, "claim_quote": claim, "evidence_quote": evidence["evidence"], "partial_support": partial_proof()})]), \
                  patch("ai_compare._propose_revision", return_value=""), contextlib.redirect_stdout(io.StringIO()):
                 result = main.analyze(main.AnalyzeRequest(text=claim))
                 self.assertEqual(result["claims"][0]["status"], status)

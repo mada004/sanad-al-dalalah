@@ -28,7 +28,15 @@ def encoded(value):
 
 
 def proof(claim, evidence):
-    return encoded({"grounded": True, "claim_quote": claim, "evidence_quote": evidence})
+    validation = {"grounded": True, "claim_quote": claim, "evidence_quote": evidence}
+    if claim == PARTIAL[0]:
+        validation["partial_support"] = {
+            "independent_assertions": True, "supported_assertion_entailed": True,
+            "other_assertion_unsupported": True,
+            "supported_component": "المكتبة متاحة للزوار المسجلين",
+            "unsupported_component": "الدخول مجاني",
+        }
+    return encoded(validation)
 
 
 def revision_proof(evidence):

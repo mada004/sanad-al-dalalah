@@ -12,10 +12,22 @@ CLAIM = "المكتبة تفتح يوم الجمعة، والدخول إليها
 PARTIAL = "المكتبة تفتح يوم الجمعة."
 
 
+def reason_proof(claim, evidence):
+    validation = {"grounded": True, "claim_quote": claim, "evidence_quote": evidence}
+    if claim == CLAIM:
+        validation["partial_support"] = {
+            "independent_assertions": True, "supported_assertion_entailed": True,
+            "other_assertion_unsupported": True,
+            "supported_component": "المكتبة تفتح يوم الجمعة",
+            "unsupported_component": "الدخول إليها مجاني للجميع",
+        }
+    return json.dumps(validation)
+
+
 class Stage1RelevanceTests(unittest.TestCase):
     def evaluate(self, claim, evidence, status, reason, suggestion):
         responses = ["YES|1", json.dumps({"status": status, "reason": reason, "suggestion": suggestion}),
-                     json.dumps({"grounded": True, "claim_quote": claim, "evidence_quote": evidence})]
+                     reason_proof(claim, evidence)]
         if suggestion:
             responses.append(json.dumps({"grounded": True, "evidence_quote": evidence}))
         with patch("ai_compare.ask_ai", side_effect=responses) as model, contextlib.redirect_stdout(io.StringIO()):
@@ -79,7 +91,7 @@ class Stage1RelevanceTests(unittest.TestCase):
         ]:
             with self.subTest(status=status), patch("ai_compare.ask_ai", side_effect=[
                 "NO", json.dumps({"status": status, "reason": "تقييم مبني على النصين", "suggestion": evidence}),
-                json.dumps({"grounded": True, "claim_quote": claim, "evidence_quote": evidence}),
+                reason_proof(claim, evidence),
                 json.dumps({"grounded": True, "evidence_quote": evidence}),
             ]) as model, contextlib.redirect_stdout(io.StringIO()):
                 result = ai_compare.compare_claim_with_evidence(claim, [{"evidence": evidence}])
