@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from dorar import search_dorar
+from central_db import search_central_db
+from claim_extraction import extract_claims
 from semantic_search import search_hadiths
 from ai_compare import compare_claim_with_evidence
 
@@ -59,11 +61,7 @@ def home():
 @app.post("/analyze")
 def analyze(request: AnalyzeRequest):
 
-    claims = [
-        claim.strip()
-        for claim in request.text.split(".")
-        if claim.strip()
-    ]
+    claims = extract_claims(request.text)
 
     results = []
 
@@ -77,6 +75,8 @@ def analyze(request: AnalyzeRequest):
 
         # البحث في Dorar
         dorar_results = search_dorar(claim)
+
+        central_db_results = search_central_db(claim, top_k=5)
 
         # نجمع الأدلة
         evidence_results = []
@@ -94,6 +94,8 @@ def analyze(request: AnalyzeRequest):
                 "source_name": result["source_name"],
                 "source_location": result["source_location"]
             })
+
+        evidence_results.extend(central_db_results)
 
         # إذا وجدنا أدلة، نرسل جميع الأدلة للـ AI للمقارنة
         if evidence_results:

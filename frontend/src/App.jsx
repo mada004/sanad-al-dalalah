@@ -321,7 +321,7 @@ function ResultsWorkspace({ claims, originalContent, onFinalChange }) {
             <div className="citation-icon"><Icon name="book" size={22} /></div>
             <div className="citation-copy">
               <span>المصدر</span>
-              <strong>{selected.source_name === "Dorar.net" ? "الدرر السنية" : selected.source_name.replace(/\s*\(مصدر تجريبي\)/g, "")}</strong>
+              <strong>{selected.source_name === "Dorar.net" ? "الدرر السنية" : selected.source_name === "HadeethEnc" ? "موسوعة الأحاديث النبوية – HadeethEnc" : selected.source_name.replace(/\s*\(مصدر تجريبي\)/g, "")}</strong>
               <small><b>موضع المصدر:</b> {selected.source_location}</small>
             </div>
           </div>

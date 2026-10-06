@@ -37,6 +37,15 @@ def ask_ai(prompt):
 # استخراج القيود المهمة من الادعاء
 # =========================================================
 
+def _selection_text(text):
+    text = re.sub(r"[\u0640\u064B-\u065F\u0670]", "", text)
+    return " ".join(re.findall(r"[^\W\d_]+", text, flags=re.UNICODE))
+
+
+def _contains_phrase(text, phrase):
+    return f" {phrase} " in f" {text} "
+
+
 def extract_constraints(claim):
 
     constraints = []
@@ -56,9 +65,11 @@ def extract_constraints(claim):
         "في النهار"
     ]
 
+    normalized_claim = _selection_text(claim)
+
     for phrase in important_phrases:
 
-        if phrase in claim:
+        if _contains_phrase(normalized_claim, _selection_text(phrase)):
             constraints.append(phrase)
 
     return constraints
@@ -71,6 +82,7 @@ def extract_constraints(claim):
 def prioritize_evidence(claim, evidence_results):
 
     constraints = extract_constraints(claim)
+    claim_words = set(_selection_text(claim).split())
 
     scored_results = []
 
@@ -79,21 +91,27 @@ def prioritize_evidence(claim, evidence_results):
         start=1
     ):
 
-        text = evidence.get(
+        text = _selection_text(evidence.get(
             "evidence",
             ""
-        )
+        ))
 
         score = 0
 
         for constraint in constraints:
 
-            if constraint in text:
+            if _contains_phrase(text, _selection_text(constraint)):
                 score += 10
+
+        evidence_words = set(text.split())
+        # Rank text overlap only; source labels and source-specific scores do not
+        # influence selection. The AI still decides whether the text supports it.
+        union = claim_words | evidence_words
+        overlap = len(claim_words & evidence_words) / len(union) if union else 0
 
         scored_results.append(
             (
-                score,
+                (score, overlap),
                 index,
                 evidence
             )
@@ -103,22 +121,6 @@ def prioritize_evidence(claim, evidence_results):
         key=lambda item: item[0],
         reverse=True
     )
-
-    matched_results = [
-        item
-        for item in scored_results
-        if item[0] > 0
-    ]
-
-    if matched_results:
-
-        return [
-            {
-                "original_index": item[1],
-                "evidence": item[2]
-            }
-            for item in matched_results
-        ]
 
     return [
         {
